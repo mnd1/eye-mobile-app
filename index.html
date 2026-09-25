@@ -54,9 +54,9 @@ textarea{min-height:105px;resize:vertical}.row{display:flex;gap:9px;flex-wrap:wr
 
 <section id="invoice" class="panel">
 <div class="card"><h2>إدخال فاتورة من صورة</h2><p class="note">واجهة تجهيز لرفع صورة الفاتورة، استخراج الأصناف والأسعار، ثم تحويل الأسعار إلى الدولار قبل الحفظ.</p>
-<label>صورة الفاتورة</label><input type="file" accept="image/*">
+<label>صورة الفاتورة</label><input id="invoiceImage" type="file" accept="image/*">
 <div class="grid" style="margin-top:12px"><div><label>عملة الفاتورة</label><input placeholder="USD / CNY / AED ..."></div><div><label>سعر التحويل إلى USD</label><input type="number" step="0.0001" placeholder="مثال 0.136"></div></div>
-<div class="row"><button class="btn primary" onclick="demo('invoiceStatus','تم تجهيز الواجهة. ربط OCR والحفظ سيتم عبر الـ API وقاعدة البيانات.')">معالجة الفاتورة</button></div>
+<div class="row"><button class="btn primary" onclick="processInvoice()">معالجة الفاتورة بالذكاء الاصطناعي</button></div>
 <div id="invoiceStatus" class="output" style="margin-top:12px">لم تتم معالجة فاتورة بعد.</div></div>
 </section>
 
@@ -131,6 +131,46 @@ async function generateMessage(){
 function copyOutput(){navigator.clipboard.writeText(out.textContent).then(()=>alert('تم نسخ الرسالة'))}
 function demo(id,t){document.getElementById(id).textContent=t}
 function compat(){compatOut.textContent='سيتم البحث في قاعدة بيانات التوافق. لن يتم عرض نتيجة تخمينية عند عدم توفر بيانات مؤكدة.'}
-</script>
+async function processInvoice() {
+  const fileInput = document.getElementById("invoiceImage");
+  const status = document.getElementById("invoiceStatus");
+
+  if (!fileInput.files || !fileInput.files[0]) {
+    status.textContent = "اختر صورة الفاتورة أولاً.";
+    return;
+  }
+
+  status.textContent = "جاري قراءة الفاتورة...";
+
+  const reader = new FileReader();
+
+  reader.onload = async function () {
+    try {
+      const response = await fetch("/api/invoice", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          image: reader.result
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "حدث خطأ");
+      }
+
+      status.textContent = data.text || "تمت قراءة الفاتورة.";
+    } catch (error) {
+      status.textContent = "خطأ: " + error.message;
+    }
+  };
+
+  reader.readAsDataURL(fileInput.files[0]);
+}
+</script>  
+  
 </body>
 </html>
