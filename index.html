@@ -80,7 +80,54 @@ textarea{min-height:105px;resize:vertical}.row{display:flex;gap:9px;flex-wrap:wr
 </main>
 <script>
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.tab).classList.add('active')});
-function generateMessage(){let k=kind.value,l=lang.value,b=brand.value,m=model.value||'—',p=part.value||'—',q=qty.value||1,n=notes.value.trim();let t=l==='English'?`Hello, I am contacting you regarding ${q} x ${p} for ${b} ${m}. Please confirm availability, quality and your current price.${n?' Notes: '+n:''}`:`مرحباً، أتواصل معكم بخصوص ${q} × ${p} لجهاز ${b} ${m}. يرجى تأكيد التوفر والجودة والسعر الحالي.${n?' ملاحظات: '+n:''}`;out.textContent=t}
+async function generateMessage(){
+  const k = kind.value;
+  const l = lang.value;
+  const b = brand.value;
+  const m = model.value;
+  const p = part.value;
+  const q = quality.value;
+  const n = qty.value;
+  const notes = note.value;
+
+  const prompt = `
+أنت مساعد متجر EYE Mobile المتخصص بقطع غيار الهواتف.
+اكتب رسالة احترافية وجاهزة للإرسال.
+
+الجهة: ${k}
+اللغة: ${l}
+الماركة: ${b}
+الموديل: ${m}
+القطعة: ${p}
+الجودة: ${q}
+الكمية: ${n}
+ملاحظات: ${notes}
+
+اكتب الرسالة فقط بدون شرح إضافي.
+`;
+
+  msgOut.textContent = "جاري إنشاء الرسالة...";
+
+  try {
+    const response = await fetch("/api/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "حدث خطأ");
+    }
+
+    msgOut.textContent = data.text || "لم يتم إنشاء رسالة.";
+  } catch (error) {
+    msgOut.textContent = "خطأ: " + error.message;
+  }
+}
 function copyOutput(){navigator.clipboard.writeText(out.textContent).then(()=>alert('تم نسخ الرسالة'))}
 function demo(id,t){document.getElementById(id).textContent=t}
 function compat(){compatOut.textContent='سيتم البحث في قاعدة بيانات التوافق. لن يتم عرض نتيجة تخمينية عند عدم توفر بيانات مؤكدة.'}
