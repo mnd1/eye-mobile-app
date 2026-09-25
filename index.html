@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EYE Mobile AI Agent</title>
+<style>
+:root{--bg:#101012;--card:#1b1b1e;--line:#303036;--red:#e21d2a;--text:#f6f6f7;--muted:#a7a7ad}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{padding:22px 18px;text-align:center;border-bottom:1px solid var(--line);position:sticky;top:0;background:#101012ee;backdrop-filter:blur(10px);z-index:2}
+.logo{font-size:25px;font-weight:800}.logo span{color:var(--red)}.sub{color:var(--muted);font-size:13px;margin-top:5px}
+nav{display:flex;gap:8px;overflow:auto;padding:12px;max-width:1050px;margin:auto}
+nav button,.btn{border:1px solid var(--line);background:var(--card);color:#fff;border-radius:12px;padding:11px 14px;font-weight:700;white-space:nowrap}
+nav button.active,.btn.primary{background:var(--red);border-color:var(--red)}
+main{max-width:1050px;margin:auto;padding:8px 14px 40px}.panel{display:none}.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+h2{margin:0 0 6px;font-size:20px}p.note{margin:0 0 14px;color:var(--muted);font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;color:#ddd;font-size:13px;margin-bottom:6px}
+input,select,textarea{width:100%;background:#111114;border:1px solid #3a3a40;color:#fff;border-radius:11px;padding:12px;font-size:16px}
+textarea{min-height:105px;resize:vertical}.row{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.output{background:#111114;border:1px dashed #444;border-radius:12px;padding:13px;min-height:85px;white-space:pre-wrap;color:#eee}
+.badge{display:inline-block;background:#2a2a2f;color:#ccc;border-radius:999px;padding:5px 9px;font-size:12px;margin:3px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.kpi{background:#151518;border:1px solid var(--line);border-radius:14px;padding:15px}.kpi b{font-size:23px;display:block;margin-top:7px}
+@media(max-width:650px){.grid,.kpis{grid-template-columns:1fr}.logo{font-size:22px}}
+</style>
+</head>
+<body>
+<header><div class="logo"><span>EYE</span> Mobile</div><div class="sub">مساعد إدارة قطع الهواتف والذكاء الاصطناعي</div></header>
+<nav id="nav">
+<button class="active" data-tab="ai">المساعد الذكي</button>
+<button data-tab="invoice">الفواتير</button>
+<button data-tab="compat">التوافق</button>
+<button data-tab="stock">المخزون</button>
+<button data-tab="suppliers">الموردون</button>
+</nav>
+<main>
+<section id="ai" class="panel active">
+<div class="card"><h2>إنشاء رسالة</h2><p class="note">للزبائن أو الموردين — الإرسال يدوي ولا يتم تلقائيًا.</p>
+<div class="grid">
+<div><label>الجهة</label><select id="kind"><option>زبون</option><option>مورد</option></select></div>
+<div><label>اللغة</label><select id="lang"><option>العربية</option><option>English</option></select></div>
+<div><label>الماركة</label><select id="brand"><option>iPhone</option><option>Samsung</option><option>Oppo</option><option>Vivo</option><option>Tecno</option><option>Infinix</option><option>Xiaomi</option><option>itel</option></select></div>
+<div><label>الموديل</label><input id="model" placeholder="مثال: A15"></div>
+<div><label>القطعة</label><input id="part" placeholder="مثال: شاشة / بطارية"></div>
+<div><label>الجودة</label><input id="quality" placeholder="Original / OLED / ..."></div>
+<div><label>الكمية</label><input id="qty" type="number" min="1" value="1"></div>
+<div><label>ملاحظات</label><input id="notes" placeholder="أي تفاصيل إضافية"></div>
+</div>
+<div class="row"><button class="btn primary" onclick="generateMessage()">إنشاء الرسالة</button><button class="btn" onclick="copyOutput()">نسخ</button></div>
+<div id="out" class="output" style="margin-top:12px">ستظهر الرسالة هنا. لن يتم اختراع أسعار غير موجودة في النظام.</div>
+</div>
+</section>
+
+<section id="invoice" class="panel">
+<div class="card"><h2>إدخال فاتورة من صورة</h2><p class="note">واجهة تجهيز لرفع صورة الفاتورة، استخراج الأصناف والأسعار، ثم تحويل الأسعار إلى الدولار قبل الحفظ.</p>
+<label>صورة الفاتورة</label><input type="file" accept="image/*">
+<div class="grid" style="margin-top:12px"><div><label>عملة الفاتورة</label><input placeholder="USD / CNY / AED ..."></div><div><label>سعر التحويل إلى USD</label><input type="number" step="0.0001" placeholder="مثال 0.136"></div></div>
+<div class="row"><button class="btn primary" onclick="demo('invoiceStatus','تم تجهيز الواجهة. ربط OCR والحفظ سيتم عبر الـ API وقاعدة البيانات.')">معالجة الفاتورة</button></div>
+<div id="invoiceStatus" class="output" style="margin-top:12px">لم تتم معالجة فاتورة بعد.</div></div>
+</section>
+
+<section id="compat" class="panel">
+<div class="card"><h2>بحث توافق القطع</h2><p class="note">البحث لا يخمّن التوافق؛ النتيجة يجب أن تكون مبنية على بيانات موثوقة مع درجة ثقة.</p>
+<div class="grid"><div><label>رقم القطعة / الاسم</label><input id="cp" placeholder="Part number"></div><div><label>الموديل</label><input id="cm" placeholder="Phone model"></div></div>
+<div class="row"><button class="btn primary" onclick="compat()">بحث</button></div>
+<div id="compatOut" class="output" style="margin-top:12px">أدخل بيانات القطعة للبحث.</div></div>
+</section>
+
+<section id="stock" class="panel">
+<div class="card"><h2>المخزون</h2><div class="kpis"><div class="kpi">الأصناف<b>—</b></div><div class="kpi">منخفض المخزون<b>—</b></div><div class="kpi">آخر تحديث<b>—</b></div></div>
+<p class="note" style="margin-top:14px">سيتم عرض بيانات المخزون من قاعدة البيانات هنا.</p></div>
+</section>
+
+<section id="suppliers" class="panel">
+<div class="card"><h2>الموردون والعملاء</h2><p class="note">إدارة بيانات الموردين والعملاء وأسعارهم، مع إمكانية اختلاف السعر من عميل لآخر.</p>
+<div class="grid"><div><label>الاسم</label><input placeholder="اسم المورد أو العميل"></div><div><label>النوع</label><select><option>مورد</option><option>عميل</option></select></div><div><label>الهاتف / WhatsApp</label><input placeholder="+961..."></div><div><label>ملاحظات</label><input placeholder="تفاصيل التعامل"></div></div>
+<div class="row"><button class="btn primary" onclick="alert('سيتم ربط الحفظ بقاعدة البيانات في الخطوة التالية.')">حفظ</button></div></div>
+</section>
+</main>
+<script>
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.tab).classList.add('active')});
+function generateMessage(){let k=kind.value,l=lang.value,b=brand.value,m=model.value||'—',p=part.value||'—',q=qty.value||1,n=notes.value.trim();let t=l==='English'?`Hello, I am contacting you regarding ${q} x ${p} for ${b} ${m}. Please confirm availability, quality and your current price.${n?' Notes: '+n:''}`:`مرحباً، أتواصل معكم بخصوص ${q} × ${p} لجهاز ${b} ${m}. يرجى تأكيد التوفر والجودة والسعر الحالي.${n?' ملاحظات: '+n:''}`;out.textContent=t}
+function copyOutput(){navigator.clipboard.writeText(out.textContent).then(()=>alert('تم نسخ الرسالة'))}
+function demo(id,t){document.getElementById(id).textContent=t}
+function compat(){compatOut.textContent='سيتم البحث في قاعدة بيانات التوافق. لن يتم عرض نتيجة تخمينية عند عدم توفر بيانات مؤكدة.'}
+</script>
+</body>
+</html>
