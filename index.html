@@ -264,16 +264,19 @@
       .replaceAll("'", "&#039;");
   }
 
-  function readFileAsDataURL(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
+  async function readFileAsDataURL(file) {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
 
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
+  let binary = "";
+  const chunkSize = 0x8000;
 
-      reader.readAsDataURL(file);
-    });
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
   }
+
+  return `data:${file.type || "image/jpeg"};base64,${btoa(binary)}`;
+}
 
   function showInvoice(invoice) {
 
