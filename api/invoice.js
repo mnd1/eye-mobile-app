@@ -28,7 +28,7 @@ export default async function handler(req, res) {
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
           "Content-Type": "application/json"
         },
 
@@ -42,35 +42,44 @@ export default async function handler(req, res) {
                 {
                   type: "input_text",
                   text: `
-أنت مساعد متخصص في قراءة فواتير قطع غيار الهواتف.
+أنت نظام متخصص بقراءة فواتير قطع غيار الهواتف.
 
-اقرأ صورة الفاتورة بدقة شديدة واستخرج جميع الأصناف بدون حذف أي سطر.
+اقرأ صورة الفاتورة بدقة شديدة.
 
-لكل صنف استخرج:
-- اسم القطعة أو الموديل
-- الماركة
-- الكمية
-- سعر الوحدة
-- المجموع
+المطلوب استخراج جميع الأصناف الموجودة في الفاتورة
+من أول صنف إلى آخر صنف بدون حذف أي سطر.
 
-واستخرج أيضاً:
-- اسم المورد إن وجد
-- التاريخ إن وجد
-- العملة إن كانت ظاهرة
-- إجمالي الكمية
-- الإجمالي العام
+أرجع JSON فقط بدون Markdown وبدون أي شرح.
 
-مهم جداً:
+استخدم هذا الشكل بالضبط:
+
+{
+  "supplier": "اسم المورد أو غير محدد",
+  "invoice_name": "الاسم الظاهر أو غير محدد",
+  "date": "التاريخ أو غير محدد",
+  "currency": "العملة أو غير محدد",
+  "items": [
+    {
+      "model": "اسم القطعة أو الموديل",
+      "brand": "الماركة",
+      "quantity": 0,
+      "unit_price": 0,
+      "total": 0
+    }
+  ],
+  "total_quantity": 0,
+  "grand_total": 0
+}
+
+قواعد مهمة جداً:
 - لا تخمن أي معلومة غير واضحة.
 - حافظ على أسماء الموديلات كما تظهر في الفاتورة.
-- تحقق أن الكمية × سعر الوحدة = المجموع عندما تكون الأرقام واضحة.
-- إذا كانت معلومة غير موجودة اكتب "غير محدد".
-- أعد النتيجة بالعربية بشكل مرتب وواضح.
+- استخرج كل الأصناف بدون استثناء.
+- quantity و unit_price و total يجب أن تكون أرقاماً عندما تكون واضحة.
+- إذا كان رقم غير واضح استخدم null.
+- total لكل صنف هو المجموع الموجود في الفاتورة وليس رقماً مخمناً.
+- لا تضع أي نص قبل أو بعد JSON.
 `
-
-
-
-
                 },
                 {
                   type: "input_image",
@@ -97,20 +106,44 @@ export default async function handler(req, res) {
     }
 
     const text =
-  data.output
-    ?.flatMap(item => item.content || [])
-    ?.filter(item => item.type === "output_text")
-    ?.map(item => item.text)
-    ?.join("\n")
-    ?.trim();
+      data.output
+        ?.flatMap(item => item.content || [])
+        ?.filter(item => item.type === "output_text")
+        ?.map(item => item.text)
+        ?.join("\n")
+        ?.trim() || "";
 
-return res.status(200).json({
-  ok: true,
-  message: text || "تم تحليل الفاتورة ولكن لم يتم إرجاع نص."
-});
-      
-      
-        
+    if (!text) {
+      return res.status(500).json({
+        ok: false,
+        error: "لم يتم استلام نتيجة من الذكاء الاصطناعي"
+      });
+    }
+
+    let invoice;
+
+    try {
+      const cleaned = text
+        .replace(/```json/gi, "")
+        .replace(/```/g, "")
+        .trim();
+
+      invoice = JSON.parse(cleaned);
+    } catch (e) {
+      console.error("JSON parse error:", e);
+      console.error("AI output:", text);
+
+      return res.status(500).json({
+        ok: false,
+        error: "تمت قراءة الفاتورة ولكن تعذر تنظيم البيانات",
+        raw: text
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      invoice
+    });
 
   } catch (error) {
     console.error(error);
