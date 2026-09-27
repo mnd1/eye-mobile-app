@@ -137,7 +137,12 @@ async function processInvoice() {
 
   try {
 
-    const image = await fileToDataURL(file);
+    const image = await file.arrayBuffer().then(buffer => {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return `data:${file.type};base64,${btoa(binary)}`;
+});
 
     statusBox.textContent = "جاري إرسال الفاتورة إلى الخادم...";
 
