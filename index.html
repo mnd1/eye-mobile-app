@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>EYE Mobile</title>
-
   <style>
     * {
       box-sizing: border-box;
+      
     }
 
     body {
@@ -21,179 +20,420 @@
     .container {
       max-width: 700px;
       margin: auto;
-      padding: 25px 18px;
+      padding: 30px 18px 60px;
     }
 
-    h1 {
+    .logo {
       text-align: center;
-      margin-bottom: 5px;
+      margin-bottom: 8px;
+      font-size: 46px;
+      font-weight: bold;
+      direction: ltr;
     }
 
-    h1 span {
-      color: #ef233c;
+    .eye {
+      color: #ff233d;
     }
 
     .subtitle {
       text-align: center;
-      color: #aaa;
-      margin-bottom: 30px;
+      color: #999;
+      font-size: 20px;
+      margin-bottom: 45px;
     }
 
     .card {
-      background: #1b1b1e;
-      border: 1px solid #333;
-      border-radius: 20px;
-      padding: 22px;
+      background: #1a1a1d;
+      border: 1px solid #38383d;
+      border-radius: 24px;
+      padding: 24px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 32px;
+      margin: 10px 0 35px;
     }
 
     label {
       display: block;
-      margin-top: 18px;
-      margin-bottom: 8px;
+      font-size: 19px;
+      margin-bottom: 12px;
     }
 
-    input {
+    input[type="file"] {
       width: 100%;
-      padding: 14px;
-      border-radius: 12px;
-      border: 1px solid #444;
-      background: #111114;
+      padding: 18px;
+      border: 2px solid #3d3d43;
+      border-radius: 16px;
+      background: #101012;
       color: white;
       font-size: 16px;
     }
 
     button {
       width: 100%;
-      margin-top: 22px;
-      padding: 15px;
+      margin-top: 25px;
+      padding: 20px;
       border: 0;
-      border-radius: 12px;
-      background: #ef233c;
+      border-radius: 16px;
+      background: #ff233d;
       color: white;
-      font-size: 17px;
+      font-size: 22px;
       font-weight: bold;
       cursor: pointer;
     }
 
-    #invoiceStatus {
-      margin-top: 20px;
-      padding: 15px;
-      min-height: 55px;
-      background: #111114;
+    button:disabled {
+      opacity: .55;
+    }
+
+    #status {
+      margin-top: 25px;
+      padding: 20px;
       border: 1px dashed #555;
-      border-radius: 12px;
-      white-space: pre-wrap;
+      border-radius: 16px;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    #result {
+      display: none;
+      margin-top: 25px;
+    }
+
+    .invoice-info {
+      background: #141416;
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 22px;
+      line-height: 2;
+    }
+
+    .invoice-info strong {
+      color: #ff5063;
+    }
+
+    .items-title {
+      font-size: 25px;
+      font-weight: bold;
+      margin: 25px 0 15px;
+    }
+
+    .item {
+      background: #141416;
+      border: 1px solid #343439;
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    .item-number {
+      color: #ff5063;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    .model {
+      font-size: 21px;
+      font-weight: bold;
+      direction: ltr;
+      text-align: right;
+      overflow-wrap: anywhere;
+      margin-bottom: 14px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      border-top: 1px solid #2e2e32;
+      padding: 10px 0;
+    }
+
+    .row span:first-child {
+      color: #aaa;
+    }
+
+    .summary {
+      background: #211518;
+      border: 1px solid #71303a;
+      border-radius: 18px;
+      padding: 18px;
+      margin-top: 25px;
+      line-height: 2;
+      font-size: 18px;
+    }
+
+    .error {
+      color: #ff7888;
+    }
+
+    @media (max-width: 500px) {
+      .logo {
+        font-size: 40px;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      .card {
+        padding: 20px 16px;
+      }
     }
   </style>
 </head>
 
 <body>
 
-<div class="container">
+  <div class="container">
 
-  <h1><span>EYE</span> Mobile</h1>
-  <div class="subtitle">نظام إدارة قطع غيار الهواتف</div>
-
-  <div class="card">
-
-    <h2>إدخال فاتورة من صورة</h2>
-
-    <label for="invoiceImage">صورة الفاتورة</label>
-    <input
-      id="invoiceImage"
-      type="file"
-      accept="image/*"
-    >
-
-    <button id="invoiceButton" type="button">
-      معالجة الفاتورة
-    </button>
-
-    <div id="invoiceStatus">
-      اختر صورة فاتورة ثم اضغط معالجة الفاتورة.
+    <div class="logo">
+      <span class="eye">EYE</span> Mobile
     </div>
 
+    <div class="subtitle">
+      نظام إدارة قطع غيار الهواتف
+    </div>
+
+    <div class="card">
+
+      <h1>إدخال فاتورة من صورة</h1>
+
+      <label for="invoiceFile">صورة الفاتورة</label>
+
+      <input
+        id="invoiceFile"
+        type="file"
+        accept="image/*"
+      >
+
+      <button id="processBtn">
+        معالجة الفاتورة
+      </button>
+
+      <div id="status">
+        اختر صورة فاتورة ثم اضغط معالجة الفاتورة.
+      </div>
+
+      <div id="result">
+
+        <div id="invoiceInfo" class="invoice-info"></div>
+
+        <div class="items-title">
+          الأصناف
+        </div>
+
+        <div id="items"></div>
+
+        <div id="summary" class="summary"></div>
+
+      </div>
+
+    </div>
   </div>
 
-</div>
-
 <script>
-const button = document.getElementById("invoiceButton");
-const fileInput = document.getElementById("invoiceImage");
-const statusBox = document.getElementById("invoiceStatus");
+  const fileInput = document.getElementById("invoiceFile");
+  const button = document.getElementById("processBtn");
+  const statusBox = document.getElementById("status");
+  const resultBox = document.getElementById("result");
+  const invoiceInfo = document.getElementById("invoiceInfo");
+  const itemsBox = document.getElementById("items");
+  const summaryBox = document.getElementById("summary");
 
-button.addEventListener("click", processInvoice);
-
-async function processInvoice() {
-
-  const file = fileInput.files[0];
-
-  if (!file) {
-    statusBox.textContent = "اختر صورة الفاتورة أولاً.";
-    return;
-  }
-
-  statusBox.textContent = "جاري قراءة الفاتورة...";
-
-  try {
-
-    const image = await file.arrayBuffer().then(buffer => {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return `data:${file.type};base64,${btoa(binary)}`;
-});
-
-    statusBox.textContent = "جاري إرسال الفاتورة إلى الخادم...";
-
-    const response = await fetch("/api/invoice", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        image: image
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.error ||
-        data.message ||
-        "حدث خطأ في الخادم"
-      );
+  function safe(value) {
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      return "غير محدد";
     }
 
-    statusBox.textContent =
-      data.message ||
-      data.text ||
-      "تمت معالجة الفاتورة بنجاح.";
-
-  } catch (error) {
-
-    console.error(error);
-
-    statusBox.textContent =
-      "خطأ: " + error.message;
+    return String(value);
   }
-}
 
-function fileToDataURL(file) {
+  function escapeHtml(value) {
+    return safe(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 
-  return new Promise((resolve, reject) => {
+  function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
 
-    const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
 
-    reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+  }
 
-    reader.onerror = () =>
-      reject(new Error("تعذر قراءة صورة الفاتورة"));
+  function showInvoice(invoice) {
 
-    reader.readAsDataURL(file);
+    invoiceInfo.innerHTML = `
+      <div>
+        <strong>المورد:</strong>
+        ${escapeHtml(invoice.supplier)}
+      </div>
+
+      <div>
+        <strong>الاسم الظاهر:</strong>
+        ${escapeHtml(invoice.invoice_name)}
+      </div>
+
+      <div>
+        <strong>التاريخ:</strong>
+        ${escapeHtml(invoice.date)}
+      </div>
+
+      <div>
+        <strong>العملة:</strong>
+        ${escapeHtml(invoice.currency)}
+      </div>
+    `;
+
+    itemsBox.innerHTML = "";
+
+    const items = Array.isArray(invoice.items)
+      ? invoice.items
+      : [];
+
+    items.forEach((item, index) => {
+
+      const div = document.createElement("div");
+      div.className = "item";
+
+      div.innerHTML = `
+        <div class="item-number">
+          الصنف ${index + 1}
+        </div>
+
+        <div class="model">
+          ${escapeHtml(item.model)}
+        </div>
+
+        <div class="row">
+          <span>الماركة</span>
+          <strong>${escapeHtml(item.brand)}</strong>
+        </div>
+
+        <div class="row">
+          <span>الكمية</span>
+          <strong>${escapeHtml(item.quantity)}</strong>
+        </div>
+
+        <div class="row">
+          <span>سعر الوحدة</span>
+          <strong>${escapeHtml(item.unit_price)}</strong>
+        </div>
+
+        <div class="row">
+          <span>المجموع</span>
+          <strong>${escapeHtml(item.total)}</strong>
+        </div>
+      `;
+
+      itemsBox.appendChild(div);
+    });
+
+    summaryBox.innerHTML = `
+      <div>
+        <strong>عدد الأصناف:</strong>
+        ${items.length}
+      </div>
+
+      <div>
+        <strong>إجمالي الكمية:</strong>
+        ${escapeHtml(invoice.total_quantity)}
+      </div>
+
+      <div>
+        <strong>الإجمالي العام:</strong>
+        ${escapeHtml(invoice.grand_total)}
+      </div>
+
+      <div>
+        <strong>العملة:</strong>
+        ${escapeHtml(invoice.currency)}
+      </div>
+    `;
+
+    resultBox.style.display = "block";
+  }
+
+  button.addEventListener("click", async () => {
+
+    const file = fileInput.files[0];
+
+    if (!file) {
+      statusBox.innerHTML =
+        '<span class="error">اختر صورة الفاتورة أولاً.</span>';
+      return;
+    }
+
+    button.disabled = true;
+    resultBox.style.display = "none";
+
+    statusBox.textContent =
+      "جاري قراءة الفاتورة... الرجاء الانتظار.";
+
+    try {
+
+      const image = await readFileAsDataURL(file);
+
+      const response = await fetch("/api/invoice", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          image
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          data.error || "حدث خطأ أثناء معالجة الفاتورة"
+        );
+      }
+
+      if (!data.invoice) {
+        throw new Error(
+          "لم يتم استلام بيانات الفاتورة"
+        );
+      }
+
+      statusBox.textContent =
+        "تمت قراءة الفاتورة بنجاح.";
+
+      showInvoice(data.invoice);
+
+    } catch (error) {
+
+      console.error(error);
+
+      statusBox.innerHTML =
+        '<span class="error">' +
+        escapeHtml(error.message) +
+        '</span>';
+
+    } finally {
+
+      button.disabled = false;
+
+    }
   });
-}
 </script>
 
 </body>
