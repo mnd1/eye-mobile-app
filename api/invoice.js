@@ -84,12 +84,21 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({
-      ok: true,
-      message:
-        data.output_text ||
-        "تم تحليل الفاتورة ولكن لم يتم إرجاع نص."
-    });
+    const text =
+  data.output
+    ?.flatMap(item => item.content || [])
+    ?.filter(item => item.type === "output_text")
+    ?.map(item => item.text)
+    ?.join("\n")
+    ?.trim();
+
+return res.status(200).json({
+  ok: true,
+  message: text || "تم تحليل الفاتورة ولكن لم يتم إرجاع نص."
+});
+      
+      
+        
 
   } catch (error) {
     console.error(error);
