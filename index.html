@@ -455,7 +455,7 @@ saveInvoiceBtn.style.display = "block";
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(currentInvoice)
+      body: JSON.stringify({ invoice: currentInvoice })
     });
 
     const data = await response.json();
