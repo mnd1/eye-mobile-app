@@ -228,7 +228,7 @@
         <div id="items"></div>
 
         <div id="summary" class="summary"></div>
-
+<button id="saveInvoiceBtn" type="button" style="display:none;">💾 حفظ الفاتورة</button>
       </div>
 
     </div>
@@ -242,7 +242,8 @@
   const invoiceInfo = document.getElementById("invoiceInfo");
   const itemsBox = document.getElementById("items");
   const summaryBox = document.getElementById("summary");
-
+  const saveInvoiceBtn = document.getElementById("saveInvoiceBtn");
+let currentInvoice = null;
   function safe(value) {
     if (
       value === null ||
@@ -342,6 +343,7 @@
           <strong>${escapeHtml(item.total)}</strong>
         </div>
       `;
+      
 
       itemsBox.appendChild(div);
     });
@@ -421,7 +423,8 @@
         "تمت قراءة الفاتورة بنجاح.";
 
       showInvoice(data.invoice);
-
+currentInvoice = data.invoice;
+saveInvoiceBtn.style.display = "block";
     } catch (error) {
 
       console.error(error);
@@ -437,6 +440,38 @@
 
     }
   });
+ saveInvoiceBtn.addEventListener("click", async () => {
+  if (!currentInvoice) {
+    statusBox.textContent = "لا توجد فاتورة لحفظها";
+    return;
+  }
+
+  saveInvoiceBtn.disabled = true;
+  statusBox.textContent = "جاري حفظ الفاتورة...";
+
+  try {
+    const response = await fetch("/api/save-invoice", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(currentInvoice)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "فشل حفظ الفاتورة");
+    }
+
+    statusBox.textContent = "✅ تم حفظ الفاتورة بنجاح";
+  } catch (error) {
+    console.error(error);
+    statusBox.textContent = "❌ " + error.message;
+  } finally {
+    saveInvoiceBtn.disabled = false;
+  }
+}); 
 </script>
 
 </body>
