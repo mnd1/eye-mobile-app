@@ -1,76 +1,88 @@
 import { createClient } from "@supabase/supabase-js";
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      ok: false,
-      error: "Use POST",
-    });
+function fail(res, status, stage, error) {
+  return res.status(status).json({ ok: false, stage, error });
+}
+
+function getSupabaseConfig() {
+  const rawUrl = process.env.SUPABASE_URL?.trim();
+  const key = (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    ""
+  ).trim();
+
+  if (!rawUrl || !key) {
+    throw new Error("MISSING_CONFIG");
   }
 
+  let url;
   try {
-    const invoice = req.body?.invoice;
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error("INVALID_URL");
+  }
 
-    if (!invoice || typeof invoice !== "object") {
-      return res.status(400).json({
-        ok: false,
-        error: "لا توجد فاتورة صالحة للحفظ",
-      });
-    }
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new Error("INVALID_URL");
+  }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
+  // createClient builds REST/Auth URLs from this value. Query strings, hashes,
+  // whitespace, or a copied dashboard path can produce Safari's vague
+  // "The string did not match the expected pattern" error downstream.
+  url.search = "";
+  url.hash = "";
+  url.pathname = url.pathname.replace(/\/+$/, "");
 
-    const supabaseKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.SUPABASE_ANON_KEY;
+  if (url.pathname && url.pathname !== "/") {
+    throw new Error("INVALID_URL");
+  }
 
-    if (!supabaseUrl || !supabaseKey) {
-      return res.status(500).json({
-        ok: false,
-        error: "إعدادات Supabase غير موجودة على Vercel",
-      });
-    }
+  return { url: url.origin, key };
+}
 
-    const supabase = createClient(
-      supabaseUrl,
-      supabaseKey,
-      {
-        auth: {
-          persistSession: false,
-        },
-      }
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return fail(res, 405, "request-method", "استخدم طلب POST");
+  }
+
+  const invoice = req.body?.invoice;
+  if (!invoice || typeof invoice !== "object" || Array.isArray(invoice)) {
+    return fail(res, 400, "request-validation", "لا توجد فاتورة صالحة للحفظ");
+  }
+
+  let config;
+  try {
+    config = getSupabaseConfig();
+  } catch (error) {
+    const reason = error.message === "INVALID_URL" ? "invalid-url" : "missing";
+    console.error("Save invoice configuration error", { reason });
+    return fail(
+      res,
+      500,
+      "server-configuration",
+      reason === "invalid-url"
+        ? "عنوان Supabase غير صالح؛ يجب أن يكون عنوان HTTPS الأساسي للمشروع"
+        : "إعدادات Supabase غير مكتملة على الخادم"
     );
+  }
 
-    const row = {
-      supplier: invoice.supplier || null,
+  const row = {
+    supplier: invoice.supplier || null,
+    invoice_number: invoice.invoice_number || invoice.invoice_name || null,
+    invoice_date: invoice.invoice_date || invoice.date || null,
+    currency: invoice.currency || null,
+    total_quantity: invoice.total_quantity ?? null,
+    total_amount: invoice.total_amount ?? invoice.grand_total ?? null,
+    items: Array.isArray(invoice.items) ? invoice.items : [],
+    raw_data: invoice,
+  };
 
-      invoice_number:
-        invoice.invoice_number ||
-        invoice.invoice_name ||
-        null,
-
-      invoice_date:
-        invoice.invoice_date ||
-        invoice.date ||
-        null,
-
-      currency: invoice.currency || null,
-
-      total_quantity:
-        invoice.total_quantity ?? null,
-
-      total_amount:
-        invoice.total_amount ??
-        invoice.grand_total ??
-        null,
-
-      items:
-        Array.isArray(invoice.items)
-          ? invoice.items
-          : [],
-
-      raw_data: invoice,
-    };
+  try {
+    const supabase = createClient(config.url, config.key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
     const { data, error } = await supabase
       .from("invoices")
@@ -79,15 +91,13 @@ export default async function handler(req, res) {
       .single();
 
     if (error) {
-      console.error(
-        "Supabase insert error:",
-        error
-      );
-
-      return res.status(500).json({
-        ok: false,
-        error: `Supabase: ${error.message}`,
+      // Log only operational metadata. Never log the key, invoice, or request.
+      console.error("Supabase insert failed", {
+        code: error.code,
+        status: error.status,
+        message: error.message,
       });
+      return fail(res, 502, "database-insert", "رفضت قاعدة البيانات حفظ الفاتورة");
     }
 
     return res.status(200).json({
@@ -95,18 +105,11 @@ export default async function handler(req, res) {
       message: "تم حفظ الفاتورة بنجاح",
       invoice: data,
     });
-
   } catch (error) {
-    console.error(
-      "Save invoice error:",
-      error
-    );
-
-    return res.status(500).json({
-      ok: false,
-      error:
-        error?.message ||
-        "حدث خطأ أثناء حفظ الفاتورة",
+    console.error("Save invoice request failed", {
+      name: error?.name,
+      message: error?.message,
     });
+    return fail(res, 502, "database-request", "تعذر الاتصال بقاعدة البيانات");
   }
 }
