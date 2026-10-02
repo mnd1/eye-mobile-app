@@ -97,6 +97,11 @@
       line-height: 1.7;
     }
 
+    #status.success {
+      color: #8be6a4;
+      border-color: #347a48;
+    }
+
     #result {
       display: none;
       margin-top: 25px;
@@ -213,7 +218,7 @@
         معالجة الفاتورة
       </button>
 
-      <div id="status">
+      <div id="status" role="status" aria-live="polite">
         اختر صورة فاتورة ثم اضغط معالجة الفاتورة.
       </div>
 
@@ -228,7 +233,10 @@
         <div id="items"></div>
 
         <div id="summary" class="summary"></div>
-<button id="saveInvoiceBtn" type="button" style="display:none;">💾 حفظ الفاتورة</button>
+
+        <button id="saveInvoiceBtn" type="button" hidden>
+          💾 حفظ الفاتورة
+        </button>
       </div>
 
     </div>
@@ -243,7 +251,27 @@
   const itemsBox = document.getElementById("items");
   const summaryBox = document.getElementById("summary");
   const saveInvoiceBtn = document.getElementById("saveInvoiceBtn");
-let currentInvoice = null;
+  let currentInvoice = null;
+
+  function setStatus(message, type = "") {
+    statusBox.textContent = message;
+    statusBox.classList.toggle("error", type === "error");
+    statusBox.classList.toggle("success", type === "success");
+  }
+
+  async function readJsonResponse(response) {
+    const text = await response.text();
+
+    if (!text) {
+      throw new Error("لم يرسل الخادم رداً. حاول مرة أخرى.");
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error("ردّ الخادم غير صالح. حاول مرة أخرى.");
+    }
+  }
   function safe(value) {
     if (
       value === null ||
@@ -378,16 +406,16 @@ let currentInvoice = null;
     const file = fileInput.files[0];
 
     if (!file) {
-      statusBox.innerHTML =
-        '<span class="error">اختر صورة الفاتورة أولاً.</span>';
+      setStatus("اختر صورة الفاتورة أولاً.", "error");
       return;
     }
 
     button.disabled = true;
     resultBox.style.display = "none";
+    currentInvoice = null;
+    saveInvoiceBtn.hidden = true;
 
-    statusBox.textContent =
-      "جاري قراءة الفاتورة... الرجاء الانتظار.";
+    setStatus("جاري قراءة الفاتورة... الرجاء الانتظار.");
 
     try {
 
@@ -405,7 +433,7 @@ let currentInvoice = null;
         })
       });
 
-      const data = await response.json();
+      const data = await readJsonResponse(response);
 
       if (!response.ok || !data.ok) {
         throw new Error(
@@ -419,20 +447,16 @@ let currentInvoice = null;
         );
       }
 
-      statusBox.textContent =
-        "تمت قراءة الفاتورة بنجاح.";
+      setStatus("تمت قراءة الفاتورة بنجاح.", "success");
 
       showInvoice(data.invoice);
-currentInvoice = data.invoice;
-saveInvoiceBtn.style.display = "block";
+      currentInvoice = data.invoice;
+      saveInvoiceBtn.hidden = false;
     } catch (error) {
 
       console.error(error);
 
-      statusBox.innerHTML =
-        '<span class="error">' +
-        escapeHtml(error.message) +
-        '</span>';
+      setStatus(error.message || "تعذر معالجة الفاتورة.", "error");
 
     } finally {
 
@@ -440,38 +464,41 @@ saveInvoiceBtn.style.display = "block";
 
     }
   });
- saveInvoiceBtn.addEventListener("click", async () => {
-  if (!currentInvoice) {
-    statusBox.textContent = "لا توجد فاتورة لحفظها";
-    return;
-  }
-
-  saveInvoiceBtn.disabled = true;
-  statusBox.textContent = "جاري حفظ الفاتورة...";
-
-  try {
-    const response = await fetch("/api/save-invoice", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ invoice: currentInvoice })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "فشل حفظ الفاتورة");
+  saveInvoiceBtn.addEventListener("click", async () => {
+    if (!currentInvoice) {
+      setStatus("لا توجد فاتورة لحفظها.", "error");
+      return;
     }
 
-    statusBox.textContent = "✅ تم حفظ الفاتورة بنجاح";
-  } catch (error) {
-    console.error(error);
-    statusBox.textContent = "❌ " + error.message;
-  } finally {
-    saveInvoiceBtn.disabled = false;
-  }
-}); 
+    saveInvoiceBtn.disabled = true;
+    setStatus("جاري حفظ الفاتورة وقطعها...");
+
+    try {
+      const response = await fetch("/api/save-invoice", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ invoice: currentInvoice })
+      });
+
+      const data = await readJsonResponse(response);
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "فشل حفظ الفاتورة");
+      }
+
+      setStatus("تم الحفظ", "success");
+    } catch (error) {
+      console.error(error);
+      setStatus(
+        `فشل الحفظ: ${error.message || "حدث خطأ غير معروف"}`,
+        "error"
+      );
+    } finally {
+      saveInvoiceBtn.disabled = false;
+    }
+  });
 </script>
 
 </body>

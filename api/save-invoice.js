@@ -1,5 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -18,6 +16,13 @@ export default async function handler(req, res) {
       });
     }
 
+    if (!Array.isArray(invoice.items)) {
+      return res.status(400).json({
+        ok: false,
+        error: "قائمة أصناف الفاتورة غير صالحة",
+      });
+    }
+
     const supabaseUrl = process.env.SUPABASE_URL;
 
     const supabaseKey =
@@ -30,16 +35,6 @@ export default async function handler(req, res) {
         error: "إعدادات Supabase غير موجودة على Vercel",
       });
     }
-
-    const supabase = createClient(
-      supabaseUrl,
-      supabaseKey,
-      {
-        auth: {
-          persistSession: false,
-        },
-      }
-    );
 
     const row = {
       supplier: invoice.supplier || null,
@@ -64,36 +59,59 @@ export default async function handler(req, res) {
         invoice.grand_total ??
         null,
 
-      items:
-        Array.isArray(invoice.items)
-          ? invoice.items
-          : [],
+      // The items JSON is stored in the same insert as the invoice, so the
+      // invoice cannot be reported as saved without its parts.
+      items: invoice.items,
 
       raw_data: invoice,
     };
 
-    const { data, error } = await supabase
-      .from("invoices")
-      .insert([row])
-      .select()
-      .single();
+    const response = await fetch(
+      `${supabaseUrl.replace(/\/$/, "")}/rest/v1/invoices`,
+      {
+        method: "POST",
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(row),
+      }
+    );
 
-    if (error) {
-      console.error(
-        "Supabase insert error:",
-        error
-      );
+    const responseText = await response.text();
+    let savedRows = [];
 
-      return res.status(500).json({
+    if (responseText) {
+      try {
+        savedRows = JSON.parse(responseText);
+      } catch {
+        console.error("Invalid Supabase response:", responseText);
+      }
+    }
+
+    if (!response.ok) {
+      const details = savedRows?.message || savedRows?.details;
+      console.error("Supabase insert error:", savedRows || responseText);
+
+      return res.status(502).json({
         ok: false,
-        error: `Supabase: ${error.message}`,
+        error: details
+          ? `تعذر حفظ الفاتورة: ${details}`
+          : "تعذر حفظ الفاتورة في قاعدة البيانات",
       });
     }
 
+    const savedInvoice = Array.isArray(savedRows)
+      ? savedRows[0]
+      : savedRows;
+
     return res.status(200).json({
       ok: true,
-      message: "تم حفظ الفاتورة بنجاح",
-      invoice: data,
+      message: "تم الحفظ",
+      invoice: savedInvoice,
+      saved_items_count: invoice.items.length,
     });
 
   } catch (error) {
