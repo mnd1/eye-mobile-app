@@ -440,6 +440,26 @@ saveInvoiceBtn.style.display = "block";
 
     }
   });
+ const saveStageLabels = {
+  "request-url": "تكوين عنوان طلب الحفظ",
+  "request-body": "تجهيز بيانات الفاتورة",
+  "network-request": "إرسال طلب الحفظ",
+  "response-read": "قراءة استجابة الخادم",
+  "response-parse": "تحليل استجابة الخادم",
+  "response-validation": "التحقق من نتيجة الحفظ",
+  "request-method": "طريقة الطلب",
+  "request-validation": "التحقق من بيانات الطلب",
+  "server-configuration": "إعداد الخادم",
+  "database-request": "الاتصال بقاعدة البيانات",
+  "database-insert": "إدخال الفاتورة في قاعدة البيانات"
+ };
+
+ function saveError(stage, message) {
+  const error = new Error(message);
+  error.stage = stage;
+  return error;
+ }
+
  saveInvoiceBtn.addEventListener("click", async () => {
   if (!currentInvoice) {
     statusBox.textContent = "لا توجد فاتورة لحفظها";
@@ -449,25 +469,59 @@ saveInvoiceBtn.style.display = "block";
   saveInvoiceBtn.disabled = true;
   statusBox.textContent = "جاري حفظ الفاتورة...";
 
+  let stage = "request-url";
+
   try {
-    const response = await fetch("/api/save-invoice", {
+    // Resolve against the current page rather than passing a relative string to
+    // WebKit's fetch implementation. This also makes the final URL inspectable.
+    const endpoint = new URL("/api/save-invoice", window.location.href);
+    if (endpoint.origin !== window.location.origin) {
+      throw saveError(stage, "عنوان الحفظ لا ينتمي إلى هذا الموقع");
+    }
+
+    stage = "request-body";
+    const body = JSON.stringify({ invoice: currentInvoice });
+
+    stage = "network-request";
+    const response = await fetch(endpoint.href, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Accept": "application/json",
+        "Content-Type": "application/json; charset=utf-8"
       },
-      body: JSON.stringify({ invoice: currentInvoice })
+      credentials: "same-origin",
+      body
     });
 
-    const data = await response.json();
+    stage = "response-read";
+    const responseText = await response.text();
+    if (!responseText) {
+      throw saveError(stage, `استجابة فارغة من الخادم (HTTP ${response.status})`);
+    }
 
-    if (!response.ok) {
-      throw new Error(data.error || "فشل حفظ الفاتورة");
+    stage = "response-parse";
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (_) {
+      throw saveError(stage, `استجابة غير صالحة من الخادم (HTTP ${response.status})`);
+    }
+
+    stage = "response-validation";
+    if (!response.ok || !data.ok) {
+      throw saveError(data.stage || stage, data.error || `فشل حفظ الفاتورة (HTTP ${response.status})`);
     }
 
     statusBox.textContent = "✅ تم حفظ الفاتورة بنجاح";
   } catch (error) {
-    console.error(error);
-    statusBox.textContent = "❌ " + error.message;
+    const failedStage = error.stage || stage;
+    const stageLabel = saveStageLabels[failedStage] || "حفظ الفاتورة";
+    console.error("Invoice save failed", {
+      stage: failedStage,
+      name: error.name,
+      message: error.message
+    });
+    statusBox.textContent = `❌ فشل في مرحلة «${stageLabel}»: ${error.message || "خطأ غير معروف"}`;
   } finally {
     saveInvoiceBtn.disabled = false;
   }
